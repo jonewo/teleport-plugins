@@ -17,6 +17,7 @@ limitations under the License.
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -61,6 +62,38 @@ func (s *AuthServer) CreateGithubAuthRequest(req services.GithubAuthRequest) (*s
 	return &req, nil
 }
 
+// upsertGithubConnector creates or updates a Github connector.
+func (s *AuthServer) upsertGithubConnector(ctx context.Context, connector services.GithubConnector) error {
+	if err := s.Identity.UpsertGithubConnector(connector); err != nil {
+		return trace.Wrap(err)
+	}
+
+	if err := s.EmitAuditEvent(events.GithubConnectorCreated, events.EventFields{
+		events.FieldName: connector.GetName(),
+		events.EventUser: clientUsername(ctx),
+	}); err != nil {
+		log.Warnf("Failed to emit GitHub connector create event: %v", err)
+	}
+
+	return nil
+}
+
+// deleteGithubConnector deletes a Github connector by name.
+func (s *AuthServer) deleteGithubConnector(ctx context.Context, connectorName string) error {
+	if err := s.Identity.DeleteGithubConnector(connectorName); err != nil {
+		return trace.Wrap(err)
+	}
+
+	if err := s.EmitAuditEvent(events.GithubConnectorDeleted, events.EventFields{
+		events.FieldName: connectorName,
+		events.EventUser: clientUsername(ctx),
+	}); err != nil {
+		log.Warnf("Failed to emit GitHub connector delete event: %v", err)
+	}
+
+	return nil
+}
+
 // GithubAuthResponse represents Github auth callback validation response
 type GithubAuthResponse struct {
 	// Username is the name of authenticated user
@@ -92,7 +125,9 @@ func (a *AuthServer) ValidateGithubAuthCallback(q url.Values) (*GithubAuthRespon
 		if re != nil && re.claims != nil {
 			fields[events.IdentityAttributes] = re.claims
 		}
-		a.EmitAuditEvent(events.UserSSOLoginFailure, fields)
+		if err := a.EmitAuditEvent(events.UserSSOLoginFailure, fields); err != nil {
+			log.Warnf("Failed to emit GitHub login failure event: %v", err)
+		}
 		return nil, trace.Wrap(err)
 	}
 	fields := events.EventFields{
@@ -103,7 +138,9 @@ func (a *AuthServer) ValidateGithubAuthCallback(q url.Values) (*GithubAuthRespon
 	if re.claims != nil {
 		fields[events.IdentityAttributes] = re.claims
 	}
-	a.EmitAuditEvent(events.UserSSOLogin, fields)
+	if err := a.EmitAuditEvent(events.UserSSOLogin, fields); err != nil {
+		log.Warnf("Failed to emit GitHub login event: %v", err)
+	}
 	return &re.auth, nil
 }
 
@@ -356,7 +393,7 @@ func (s *AuthServer) createGithubUser(p *createUserParams) (services.User, error
 				Username:    p.username,
 			}},
 			CreatedBy: services.CreatedBy{
-				User: services.UserRef{Name: "system"},
+				User: services.UserRef{Name: teleport.UserSystem},
 				Time: s.GetClock().Now().UTC(),
 				Connector: &services.ConnectorRef{
 					Type:     teleport.ConnectorGithub,
@@ -374,17 +411,25 @@ func (s *AuthServer) createGithubUser(p *createUserParams) (services.User, error
 	if err != nil && !trace.IsNotFound(err) {
 		return nil, trace.Wrap(err)
 	}
+
+	ctx := context.TODO()
+
 	if existingUser != nil {
 		ref := user.GetCreatedBy().Connector
 		if !ref.IsSameProvider(existingUser.GetCreatedBy().Connector) {
-			return nil, trace.AlreadyExists("user %q already exists and is not Github user",
+			return nil, trace.AlreadyExists("local user %q already exists and is not a Github user",
 				existingUser.GetName())
 		}
+
+		if err := s.UpdateUser(ctx, user); err != nil {
+			return nil, trace.Wrap(err)
+		}
+	} else {
+		if err := s.CreateUser(ctx, user); err != nil {
+			return nil, trace.Wrap(err)
+		}
 	}
-	err = s.UpsertUser(user)
-	if err != nil {
-		return nil, trace.Wrap(err)
-	}
+
 	return user, nil
 }
 
@@ -534,10 +579,12 @@ func (c *githubAPIClient) getTeams() ([]teamResponse, error) {
 
 			// Print warning to Teleport logs as well as the Audit Log.
 			log.Warnf(warningMessage)
-			c.authServer.EmitAuditEvent(events.UserSSOLoginFailure, events.EventFields{
+			if err := c.authServer.EmitAuditEvent(events.UserSSOLoginFailure, events.EventFields{
 				events.LoginMethod:        events.LoginMethodGithub,
 				events.AuthAttemptMessage: warningMessage,
-			})
+			}); err != nil {
+				log.Warnf("Failed to emit GitHub login failure event: %v", err)
+			}
 
 			return result, nil
 		}

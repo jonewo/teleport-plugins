@@ -129,7 +129,6 @@ type EtcdBackend struct {
 	nodes []string
 	*log.Entry
 	cfg              *Config
-	etcdKey          string
 	client           *clientv3.Client
 	cancelC          chan bool
 	stopC            chan bool
@@ -162,7 +161,7 @@ type Config struct {
 	DialTimeout time.Duration `json:"dial_timeout,omitempty"`
 	// Username is an optional username for HTTPS basic authentication
 	Username string `json:"username,omitempty"`
-	// Password is initalized from password file, and is not read from the config
+	// Password is initialized from password file, and is not read from the config
 	Password string `json:"-"`
 	// PasswordFile is an optional password file for HTTPS basic authentication,
 	// expects path to a file
@@ -228,7 +227,7 @@ func (cfg *Config) Validate() error {
 	if len(cfg.Nodes) == 0 {
 		return trace.BadParameter(`etcd: missing "peers" parameter`)
 	}
-	if cfg.Insecure == false {
+	if !cfg.Insecure {
 		if cfg.TLSCAFile == "" {
 			return trace.BadParameter(`etcd: missing "tls_ca_file" parameter`)
 		}
@@ -456,7 +455,7 @@ func (b *EtcdBackend) CompareAndSwap(ctx context.Context, expected backend.Item,
 	if len(replaceWith.Key) == 0 {
 		return nil, trace.BadParameter("missing parameter Key")
 	}
-	if bytes.Compare(expected.Key, replaceWith.Key) != 0 {
+	if !bytes.Equal(expected.Key, replaceWith.Key) {
 		return nil, trace.BadParameter("expected and replaceWith keys should match")
 	}
 	var opts []clientv3.OpOption
