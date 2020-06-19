@@ -7,11 +7,11 @@ services:
   #
   teleport:
     image: teleport:latest
-    env_file: teleport.env.file
+    env_file: 
+      - teleport.env
     container_name: teleport
-    command: ${CONTAINERHOME}/build/teleport start -d -c ${PLUGINSHOME}/docker/teleport/config.yaml
-    mem_limit: 300m
-    memswap_limit: 0
+    command: ${CONTAINERHOME}/build/teleport start -c ${PLUGINSHOME}/docker/teleport/config.yaml
+    mem_limit: 300M
     ports:
       - "3080:3080"
       - "3023:3023"
@@ -34,8 +34,9 @@ services:
     image: teleport:latest
     container_name: one-sshd
     command: /usr/bin/start-sshd.sh
-    env_file: teleport.env.file
-    mem_limit: 300m
+    env_file: 
+      - teleport.env
+    mem_limit: 300M
     volumes:
       - ./sshd/pam.d/ssh:/etc/pam.d/ssh
       - ./sshd/etc/ssh/sshd_config:/etc/ssh/sshd_config
@@ -48,8 +49,9 @@ services:
     image: teleport-slack:latest
     container_name: teleport_slack_plugin
     command: ${PLUGINSHOME}/access/slack/build/teleport-slack start -c ${PLUGINSHOME}/docker/slack/teleport-slack.toml
-    env_file: teleport-slack.env.file
-    mem_limit: 300m
+    env_file: 
+      - teleport.env
+    mem_limit: 300M
     volumes:
       - ./data/var/lib/teleport:/var/lib/teleport
       - ../../teleport:/root/go/src/github.com/gravitational/teleport

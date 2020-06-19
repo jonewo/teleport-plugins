@@ -1,6 +1,8 @@
 # example slack plugin configuration TOML file
 [teleport]
-auth_server = "example.com:3025"                        # Teleport Auth Server GRPC API address
+# Auth server address from `docker-compose.yml`
+auth_server = "172.10.1.1:3025"                         
+
 client_key = "/var/lib/teleport/plugins/slack/auth.key" # Teleport GRPC client secret key
 client_crt = "/var/lib/teleport/plugins/slack/auth.crt" # Teleport GRPC client certificate
 root_cas = "/var/lib/teleport/plugins/slack/auth.cas"   # Teleport cluster CA certs

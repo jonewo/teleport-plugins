@@ -8,18 +8,20 @@ ENTERPRISE_LICENSE ?= ../e/fixtures/license-enterprise.pem
 PRO_LICENSE ?= ../e/fixtures/license-pro.pem
 # whether to look for enterprise or pro license
 # MODE ?= enterprise
+# `open` mode skips the license check. 
 MODE ?= open
 
 # source directory in the build box
 SRCDIR ?= /gopath/src/github.com/gravitational/teleport-plugins
-
 MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 
 RUNTIME ?= go1.13.2
 BBOX = teleport-buildbox:$(RUNTIME)
 
 #
-# Default target starts two Teleport clusters
+# Default target starts a teleport cluster with a single node,
+# provisions all the required configurations for users and roles, 
+# and then starts all the plugins.
 #
 .PHONY: up
 up: check-license
@@ -37,24 +39,16 @@ down:
 #
 .PHONY:enter-teleport
 enter-teleport:
-	docker exec -ti teleport /bin/bash
+	docker-compose exec teleport /bin/bash
 
 # `make enter-sshd` gives you shell inside sshd container
 .PHONY:enter-teleport-sshd
 enter-sshd:
-	docker exec -ti one-sshd /bin/bash
+	docker-compose exec one-sshd /bin/bash
 
 .PHONY: export-certs
 export-certs:
-	docker exec -i teleport /bin/bash -c "tctl auth export --type=user | sed s/cert-authority\ // > /mnt/shared/certs/teleport.pub"
-
-.PHONY: setup-tc
-setup-tc:
-	docker exec -i teleport /bin/bash -c "tctl -c /root/go/src/github.com/gravitational/teleport/docker/teleport/config.yaml create -f /root/go/src/github.com/gravitational/teleport/docker/teleport/cluster.yaml"
-
-.PHONY: delete-tc
-delete-tc:
-	docker exec -i two-auth /bin/bash -c "tctl -c /root/go/src/github.com/gravitational/teleport/docker/teleport/config.yaml rm tc/one"
+	docker-compose exec teleport /bin/bash -c "tctl auth export --type=user | sed s/cert-authority\ // > /mnt/shared/certs/teleport.pub"
 
 .PHONY: check-license
 check-license:
@@ -76,6 +70,23 @@ check-license:
 build-teleport-image:
 	docker build -t teleport:latest ../../teleport/docker/
 
+# `make configure` provisions configs for the `teleport cluster: 
+# 1. Creates the role and user for tests
+# 2. Creates the role and user for plugins to run with 
+# 3. Exports the access-plugin certs so that we can later use them for plugins. 
+#
+.PHONY: config
+config:
+	docker-compose start teleport
+	
+	# Seems like this fails to create a role without a valid enterprise license.
+	docker-compose exec teleport /bin/bash -c "tctl create -f \$$PLUGINSHOME/docker/teleport/foo-role.yaml"
+	docker-compose exec teleport /bin/bash -c "tctl create -f \$$PLUGINSHOME/docker/teleport/access-plugin-user-role.yaml"
+	
+	# Now we're ready to export the certificates!
+	docker-compose exec teleport /bin/bash -c "tctl auth sign --format=tls --user=access-plugin --out=plug"	
+	docker-compose exec teleport /bin/bash -c "mkdir -p /mnt/shared/certs/access-plugin && mv plug.* /mnt/shared/certs/access-plugin/"
+	docker-compose stop teleport
 
 # Builds teleport-slack:latest docker image
 #

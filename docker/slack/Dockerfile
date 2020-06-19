@@ -17,7 +17,7 @@ RUN apt-get install -y ansible ssh inetutils-syslogd
 
 RUN mkdir /run/sshd
 
-VOLUME ["/teleport", "/var/lib/teleport"]
+VOLUME ["/root/go/src/github.com/gravitational/teleport-plugins", "/var/lib/teleport"]
 COPY .bashrc /root/.bashrc
 COPY .screenrc /root/.screenrc
 COPY ./sshd/start.sh /usr/bin/start-sshd.sh

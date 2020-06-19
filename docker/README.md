@@ -1,10 +1,12 @@
 ## Docker
 
-This directory contains Docker-based flow to run Teleport Plugins locally, and is indended for manual QA with the [Test Plan](../testplan.md) / testing purposuses.
+This directory contains Docker-based flow to run Teleport Plugins locally, and is 
+indended for manual QA with the [Test Plan](../testplan.md) / testing purposuses.
 
 ### Setup
 
-This flow builds on top of [Teleport's own Docker flow](https://github.com/gravitational/teleport/tree/master/docker).Teleport's own Docker image and services are managed with that flow.
+This flow builds on top of [Teleport's own Docker flow](https://github.com/gravitational/teleport/tree/master/docker).
+Teleport's own Docker image and services are managed with that flow.
 
 #### Getting started with Teleport's Docker flow
 
@@ -17,9 +19,10 @@ make docker
 ```
 
 After that, we'll build the teleport's image from teleport-plugin's directory.
-We'll still use teleport's own Dockerfile, but the services in `docker-compose.yml` are different,
-and teleport-plugins test flow uses it's own `data` directory, just so if you've been testing both
-teleport and teleport-plugins, they shouldn't interfere with each other.
+We'll still use teleport's own Dockerfile, but the services in `docker-compose.yml`
+are different, and teleport-plugins test flow uses it's own `data` directory, 
+just so if you've been testing both teleport and teleport-plugins, 
+they shouldn't interfere with each other.
 
 Please refer to Teleport's Docker documentation for more details about it's configuration.
 
@@ -41,7 +44,7 @@ make up # Starts a single node Teleport cluster and a Teleport Slack plugin alon
 make down
 ```
 
-### Confugurationå
+### Confuguration
 
 ### TODO
 

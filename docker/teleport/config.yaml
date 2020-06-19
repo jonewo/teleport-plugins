@@ -1,10 +1,14 @@
 # Single-node Teleport cluster called "one" (runs all 3 roles: proxy, auth and node)
 teleport:
-  nodename: one
   advertise_ip: 172.10.1.1
+  auth_token: foobar
+  auth_servers: ["localhost:3025"]
+  cache:
+    enabled: false
   log:
     output: stdout
-    severity: DEBUG
+    severity: INFO
+    # severity: DEBUG
 
   data_dir: /var/lib/teleport
   storage:
@@ -19,13 +23,13 @@ auth_service:
 
   cluster_name: one
   tokens:
-       - "node,auth,proxy:foo"
+       - "node,auth,proxy:foobar"
        - "trustedcluster:bar"
 
 ssh_service:
   enabled: yes
   labels:
-      cluster: one
+      cluster: docker-cluster
   commands:
       - name: kernel
         command: [/bin/uname, -r]
