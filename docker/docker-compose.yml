@@ -6,11 +6,11 @@ services:
   # ../../teleport.
   #
   teleport:
-    image: teleport:latest
+    image: teleport-ent:latest
     env_file: 
       - teleport.env
     container_name: teleport
-    command: ${CONTAINERHOME}/build/teleport start -c ${PLUGINSHOME}/docker/teleport/config.yaml
+    command: ${CONTAINERHOME}/build/teleport start -d -c ${PLUGINSHOME}/docker/teleport/teleport.yaml
     mem_limit: 300M
     ports:
       - "3080:3080"
@@ -25,25 +25,7 @@ services:
       teleport-network:
         ipv4_address: 172.10.1.1
         aliases:
-          - teleport-lb
-
-  #
-  # teleport-sshd is a single-node Teleport cluster called "one" (runs all 3 roles: proxy, auth and node)
-  #
-  teleport-sshd:
-    image: teleport:latest
-    container_name: one-sshd
-    command: /usr/bin/start-sshd.sh
-    env_file: 
-      - teleport.env
-    mem_limit: 300M
-    volumes:
-      - ./sshd/pam.d/ssh:/etc/pam.d/ssh
-      - ./sshd/etc/ssh/sshd_config:/etc/ssh/sshd_config
-      - certs:/mnt/shared/certs
-    networks:
-      teleport-network:
-        ipv4_address: 172.10.1.21
+          - "teleport.cluster.local"
 
   teleport-slack:
     image: teleport-slack:latest
@@ -62,7 +44,7 @@ services:
       teleport-network:
         ipv4_address: 172.10.1.41
         aliases:
-          - teleport-slack-lb
+          - "teleport-slack.cluster.local"
 
 # This piece is straight from teleport's docker-compose
 networks:

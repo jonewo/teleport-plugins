@@ -7,8 +7,8 @@ teleport:
     enabled: false
   log:
     output: stdout
-    severity: INFO
-    # severity: DEBUG
+    # severity: INFO
+    severity: DEBUG
 
   data_dir: /var/lib/teleport
   storage:
@@ -17,9 +17,7 @@ teleport:
 
 auth_service:
   enabled: yes
-
-  authentication:
-    type: oidc
+  license_file: /var/lib/teleport/license.pem
 
   cluster_name: one
   tokens:

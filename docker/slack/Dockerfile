@@ -1,5 +1,6 @@
 # Defines Teleport Slack image
 # Based on Teleport's image
+# Tweak this and then do `make build-teleport-slack-image` to rebuild the image.
 
 # The base image (buildbox:latest) is built by running `make -C build.assets`
 # from the teleport repo directory $GOPATH/gravitational.com/teleport

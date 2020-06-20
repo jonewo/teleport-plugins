@@ -15,6 +15,15 @@ MODE ?= open
 SRCDIR ?= /gopath/src/github.com/gravitational/teleport-plugins
 MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 
+# This is the Teleport version that will be used for the Teleport image.
+# It can be any _released_ version, as the image will try to install the
+# enterprise version of Teleport.
+VERSION=4.2.10
+GITTAG=v$(VERSION)
+OS ?= $(shell go env GOOS)
+ARCH ?= $(shell go env GOARCH)
+RELEASE=teleport-$(GITTAG)-$(OS)-$(ARCH)-bin
+
 RUNTIME ?= go1.13.2
 BBOX = teleport-buildbox:$(RUNTIME)
 
@@ -68,7 +77,7 @@ check-license:
 #
 .PHONY: build-teleport-image
 build-teleport-image:
-	docker build -t teleport:latest ../../teleport/docker/
+	docker build -t teleport-ent:latest -f ./teleport/Dockerfile .
 
 # `make configure` provisions configs for the `teleport cluster: 
 # 1. Creates the role and user for tests
@@ -79,13 +88,15 @@ build-teleport-image:
 config:
 	docker-compose start teleport
 	
-	# Seems like this fails to create a role without a valid enterprise license.
+	# ----> Creating dummy roles for requests and plugins to use.
 	docker-compose exec teleport /bin/bash -c "tctl create -f \$$PLUGINSHOME/docker/teleport/foo-role.yaml"
 	docker-compose exec teleport /bin/bash -c "tctl create -f \$$PLUGINSHOME/docker/teleport/access-plugin-user-role.yaml"
 	
-	# Now we're ready to export the certificates!
+	# ----> Exporting certificates.
 	docker-compose exec teleport /bin/bash -c "tctl auth sign --format=tls --user=access-plugin --out=plug"	
 	docker-compose exec teleport /bin/bash -c "mkdir -p /mnt/shared/certs/access-plugin && mv plug.* /mnt/shared/certs/access-plugin/"
+
+	# ----> Stoppig Teleport's VM.
 	docker-compose stop teleport
 
 # Builds teleport-slack:latest docker image
